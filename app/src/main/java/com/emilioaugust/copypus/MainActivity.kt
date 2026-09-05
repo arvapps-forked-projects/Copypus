@@ -15,10 +15,10 @@ import androidx.compose.runtime.getValue
 import androidx.core.os.LocaleListCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
-import com.emilioaugust.copypus.data.MainViewModel
-import com.emilioaugust.copypus.data.SettingsDataStore
-import com.emilioaugust.copypus.data.SettingsViewModel
-import com.emilioaugust.copypus.data.SettingsViewModelFactory
+import com.emilioaugust.copypus.data.viewmodel.MainViewModel
+import com.emilioaugust.copypus.data.datastore.SettingsDataStore
+import com.emilioaugust.copypus.data.viewmodel.SettingsViewModel
+import com.emilioaugust.copypus.data.viewmodel.SettingsViewModelFactory
 import com.emilioaugust.copypus.ui.screens.MainScreen
 import com.emilioaugust.copypus.ui.theme.ClipboardTheme
 import com.emilioaugust.copypus.ui.theme.ThemeMode

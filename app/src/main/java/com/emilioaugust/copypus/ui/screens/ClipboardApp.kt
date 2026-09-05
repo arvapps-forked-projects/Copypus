@@ -14,6 +14,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,8 +71,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.emilioaugust.copypus.ClipboardData
-import com.emilioaugust.copypus.data.MainViewModel
-import com.emilioaugust.copypus.data.ClipboardItem
+import com.emilioaugust.copypus.data.viewmodel.MainViewModel
+import com.emilioaugust.copypus.data.entity.ClipboardItem
 import com.emilioaugust.copypus.ClipboardManagerHelper
 import com.emilioaugust.copypus.ui.EditSheet
 import com.emilioaugust.copypus.ui.ManualEntrySheet
@@ -421,7 +422,7 @@ fun ClipboardItemCard(item: ClipboardItem, onCopy: () -> Unit, onFavorite: () ->
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Box(
                     modifier = Modifier
@@ -491,25 +492,27 @@ fun ClipboardItemCard(item: ClipboardItem, onCopy: () -> Unit, onFavorite: () ->
                         color = Color.Gray,
                     )
                 }
+                Spacer(Modifier.width(10.dp))
 
-                IconButton(onClick = onCopy) {
-                    Icon(
-                        Icons.Default.ContentCopy,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(
-                        imageVector =
-                            if (expanded)
-                                Icons.Default.ExpandLess
-                            else
-                                Icons.Default.ExpandMore,
-                        contentDescription = null
-                    )
-                }
+                Icon(
+                    Icons.Default.ContentCopy,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .size(24.dp)
+                        .clickable { onCopy() }
+                )
+                Spacer(Modifier.width(14.dp))
+                Icon(
+                    imageVector =
+                        if (expanded)
+                            Icons.Default.ExpandLess
+                        else
+                            Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.padding(top = 12.dp)
+                        .clickable { expanded = !expanded }
+                )
             }
         }
     }

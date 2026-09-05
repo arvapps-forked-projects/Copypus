@@ -48,19 +48,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.emilioaugust.copypus.BuildConfig
 import com.emilioaugust.copypus.R
-import com.emilioaugust.copypus.data.AutoDeleteOption
-import com.emilioaugust.copypus.data.AppLanguage
-import com.emilioaugust.copypus.data.PauseDuration
-import com.emilioaugust.copypus.data.SettingsViewModel
+import com.emilioaugust.copypus.data.enums.AutoDeleteOption
+import com.emilioaugust.copypus.data.enums.AppLanguage
+import com.emilioaugust.copypus.data.enums.PauseDuration
+import com.emilioaugust.copypus.data.viewmodel.SettingsViewModel
 import com.emilioaugust.copypus.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
 import androidx.core.net.toUri
@@ -80,7 +82,8 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(stringResource(R.string.topbar_settings)) },
+                title = { Text(stringResource(R.string.topbar_settings),
+                    color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor =
                         MaterialTheme.colorScheme.background,
@@ -211,37 +214,24 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
                     HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(start = 16.dp, end = 16.dp))
 
-                    Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp, horizontal = 16.dp)
-                        .clickable {
+                    AboutItem(
+                        icon = Icons.Default.Feedback,
+                        text = stringResource(R.string.app_feedback_support_title),
+                        onClick = {
                             val intent = Intent(Intent.ACTION_SENDTO).apply { data = "mailto:emiliooaaugust@gmail.com".toUri() }
                             context.startActivity(intent)
-
                         }
-                    ) {
-                        Icon(Icons.Default.Feedback, contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp), tint = MaterialTheme.colorScheme.onTertiary)
-                        Text(stringResource(R.string.app_feedback_support_title))
-                        Spacer(modifier = Modifier.weight(1f))
-                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
-                    }
+                    )
 
                     HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(start = 16.dp, end = 16.dp))
 
-                    Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp, horizontal = 16.dp)
-                        .clickable {
+                    AboutItem(
+                        icon = Icons.Default.Code,
+                        text = stringResource(R.string.view_source_code_title),
+                        onClick = {
                             context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/emilioaugust/Copypus".toUri()))
                         }
-                    ) {
-                        Icon(Icons.Default.Code, contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp), tint = MaterialTheme.colorScheme.onTertiary)
-                        Text(stringResource(R.string.view_source_code_title))
-                        Spacer(modifier = Modifier.weight(1f))
-                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
-                    }
+                    )
                 }
             }
         }
@@ -267,6 +257,25 @@ fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
         Column {
             content()
         }
+    }
+}
+
+@Composable
+fun AboutItem(icon: ImageVector, text: String, onClick: () -> Unit) {
+    Row(modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 16.dp, horizontal = 16.dp)
+        .clickable {
+            onClick()
+        },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, contentDescription = null,
+            modifier = Modifier.padding(end = 8.dp), tint = MaterialTheme.colorScheme.onTertiary)
+        Text(text)
+        Spacer(modifier = Modifier.weight(1f))
+        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
     }
 }
 

@@ -1,14 +1,19 @@
-package com.emilioaugust.copypus.data
+package com.emilioaugust.copypus.data.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.emilioaugust.copypus.data.database.AppDatabase
+import com.emilioaugust.copypus.data.enums.AutoDeleteOption
+import com.emilioaugust.copypus.data.entity.ClipboardItem
+import com.emilioaugust.copypus.data.repository.ClipboardRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = ClipboardRepository(AppDatabase.getInstance(application).clipboardDao())
+    private val repository =
+        ClipboardRepository(AppDatabase.Companion.getInstance(application).clipboardDao())
     private var lastSavedText: String? = null
     val items = repository.getAllItems().stateIn(scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000), initialValue = emptyList())

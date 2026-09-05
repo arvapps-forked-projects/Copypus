@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.emilioaugust.copypus.R
 import com.emilioaugust.copypus.ClipboardManagerHelper
-import com.emilioaugust.copypus.data.MainViewModel
+import com.emilioaugust.copypus.data.viewmodel.MainViewModel
 import com.emilioaugust.copypus.utils.formatSectionTitle
 import kotlinx.coroutines.launch
 import kotlin.collections.component1

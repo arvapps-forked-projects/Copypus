@@ -25,8 +25,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.emilioaugust.copypus.R
-import com.emilioaugust.copypus.data.MainViewModel
-import com.emilioaugust.copypus.data.SettingsViewModel
+import com.emilioaugust.copypus.data.viewmodel.MainViewModel
+import com.emilioaugust.copypus.data.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -59,6 +59,7 @@ fun MultiPasteSheet(onDismiss: () -> Unit, onSaveAll: (List<String>) -> Unit) {
             },
             modifier = Modifier.fillMaxWidth(),
             minLines = 4,
+            maxLines = 24,
             placeholder = {
                 Text(stringResource(R.string.paste_text_here_placeholder), color = Color.Gray)
             }
@@ -172,6 +173,7 @@ fun ManualEntrySheet(onDismiss: () -> Unit, onSave: (String) -> Unit) {
             },
             modifier = Modifier.fillMaxWidth(),
             minLines = 4,
+            maxLines = 24,
             placeholder = {
                 Text(stringResource(R.string.paste_text_here_placeholder), color = Color.Gray)
             }
@@ -216,6 +218,7 @@ fun EditSheet(initialText: String, onDismiss: () -> Unit, onSave: (String) -> Un
             },
             modifier = Modifier.fillMaxWidth(),
             minLines = 4,
+            maxLines = 24,
             placeholder = {
                 Text(stringResource(R.string.paste_text_here_placeholder), color = Color.Gray)
             }

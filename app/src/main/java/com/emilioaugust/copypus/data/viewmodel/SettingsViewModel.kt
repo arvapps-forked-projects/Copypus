@@ -1,8 +1,12 @@
-package com.emilioaugust.copypus.data
+package com.emilioaugust.copypus.data.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.emilioaugust.copypus.data.enums.AppLanguage
+import com.emilioaugust.copypus.data.enums.AutoDeleteOption
+import com.emilioaugust.copypus.data.enums.PauseDuration
+import com.emilioaugust.copypus.data.datastore.SettingsDataStore
 import com.emilioaugust.copypus.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn

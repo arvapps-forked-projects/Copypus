@@ -1,4 +1,4 @@
-package com.emilioaugust.copypus.data
+package com.emilioaugust.copypus.data.enums
 
 import androidx.annotation.StringRes
 import com.emilioaugust.copypus.R

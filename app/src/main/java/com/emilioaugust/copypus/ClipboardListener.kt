@@ -3,7 +3,7 @@ package com.emilioaugust.copypus
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import com.emilioaugust.copypus.data.SettingsDataStore
+import com.emilioaugust.copypus.data.datastore.SettingsDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

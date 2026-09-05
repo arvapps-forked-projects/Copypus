@@ -26,9 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.emilioaugust.copypus.data.AppDatabase
-import com.emilioaugust.copypus.data.ClipboardItem
-import com.emilioaugust.copypus.data.ClipboardRepository
+import com.emilioaugust.copypus.data.database.AppDatabase
+import com.emilioaugust.copypus.data.entity.ClipboardItem
+import com.emilioaugust.copypus.data.repository.ClipboardRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

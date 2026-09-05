@@ -1,4 +1,4 @@
-package com.emilioaugust.copypus.data
+package com.emilioaugust.copypus.data.datastore
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -6,6 +6,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.emilioaugust.copypus.data.enums.AppLanguage
+import com.emilioaugust.copypus.data.enums.AutoDeleteOption
+import com.emilioaugust.copypus.data.enums.PauseDuration
 import com.emilioaugust.copypus.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first

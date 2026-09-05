@@ -5,7 +5,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.annotation.RequiresApi
 import com.emilioaugust.copypus.R
-import com.emilioaugust.copypus.data.SettingsDataStore
+import com.emilioaugust.copypus.data.datastore.SettingsDataStore
 import com.emilioaugust.copypus.utils.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

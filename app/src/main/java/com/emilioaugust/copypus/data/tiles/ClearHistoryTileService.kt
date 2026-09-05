@@ -6,9 +6,9 @@ import android.service.quicksettings.TileService
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.emilioaugust.copypus.R
-import com.emilioaugust.copypus.data.AppDatabase
-import com.emilioaugust.copypus.data.ClipboardRepository
-import com.emilioaugust.copypus.data.SettingsDataStore
+import com.emilioaugust.copypus.data.database.AppDatabase
+import com.emilioaugust.copypus.data.repository.ClipboardRepository
+import com.emilioaugust.copypus.data.datastore.SettingsDataStore
 import com.emilioaugust.copypus.utils.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
