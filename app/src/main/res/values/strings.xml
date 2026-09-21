@@ -65,4 +65,12 @@
     <string name="app_feedback_support_title"><![CDATA[App Feedback & Support]]></string>
     <string name="view_source_code_title">View Source Code</string>
     <string name="edit_title">Edit</string>
+    <string name="save_clipboard_label">Save Clipboard</string>
+    <string name="save_clipboard_subtitle">Save current clipboard</string>
+    <string name="clipboard_saved_text">Saved to Copypus</string>
+    <string name="clipboard_empty_text">Clipboard is empty</string>
+    <string name="system">SYSTEM</string>
+    <string name="accessibility_service">Accessibility service</string>
+    <string name="allow_saving_the_clipboard_without_opening_the_app">Allow saving the clipboard without opening the app</string>
+    <string name="accessibility_service_description">Allows Copypus to save copied text automatically.</string>
 </resources>
