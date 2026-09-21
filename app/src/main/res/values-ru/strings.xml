@@ -65,4 +65,12 @@
     <string name="app_feedback_support_title"><![CDATA[Обратная связь и поддержка]]></string>
     <string name="view_source_code_title">Просмотреть исходный код</string>
     <string name="edit_title">Редактировать</string>
+    <string name="save_clipboard_label">Сохранить буфер обмена</string>
+    <string name="save_clipboard_subtitle">Сохранить текущий буфер обмена</string>
+    <string name="clipboard_saved_text">Сохранено в Copypus</string>
+    <string name="clipboard_empty_text">Буфер обмена пуст</string>
+    <string name="system">СИСТЕМА</string>
+    <string name="accessibility_service">Служба спец. возможностей</string>
+    <string name="allow_saving_the_clipboard_without_opening_the_app">Разрешить сохранение буфера обмена без открытия приложения</string>
+    <string name="accessibility_service_description">Позволяет Copypus автоматически сохранять скопированный текст.</string>
 </resources>

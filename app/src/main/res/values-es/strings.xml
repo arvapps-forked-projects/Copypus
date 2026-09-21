@@ -65,4 +65,12 @@
     <string name="app_feedback_support_title"><![CDATA[Comentarios y soporte]]></string>
     <string name="view_source_code_title">Ver código fuente</string>
     <string name="edit_title">Editar</string>
+    <string name="save_clipboard_label">Guardar portapapeles</string>
+    <string name="save_clipboard_subtitle">Guardar el portapapeles actual</string>
+    <string name="clipboard_saved_text">Guardado en Copypus</string>
+    <string name="clipboard_empty_text">El portapapeles está vacío</string>
+    <string name="system">SISTEMA</string>
+    <string name="accessibility_service">Servicio de accesibilidad</string>
+    <string name="allow_saving_the_clipboard_without_opening_the_app">Permitir guardar el portapapeles sin abrir la aplicación</string>
+    <string name="accessibility_service_description">Permite a Copypus guardar automáticamente el texto copiado.</string>
 </resources>
