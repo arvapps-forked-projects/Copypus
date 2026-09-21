@@ -127,7 +127,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         }
                     }
                 }
-
                 // AUTO DELETE and PAUSE DURATION
                 Spacer(modifier = Modifier.height(28.dp))
                 Text(text = stringResource(R.string.title_preferences_settings), style = MaterialTheme.typography.labelSmall,
