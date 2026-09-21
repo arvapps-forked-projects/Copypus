@@ -8,17 +8,30 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.emilioaugust.copypus.data.database.AppDatabase
+import com.emilioaugust.copypus.data.datastore.SettingsDataStore
 import com.emilioaugust.copypus.data.entity.ClipboardItem
 import com.emilioaugust.copypus.data.repository.ClipboardRepository
+import com.emilioaugust.copypus.utils.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 class SaveClipboardActivity : ComponentActivity() {
 
     private lateinit var repository: ClipboardRepository
     private var hasStarted = false
+
+    override fun attachBaseContext(newBase: Context) {
+        val language = runBlocking {
+            SettingsDataStore(newBase).language.first()
+        }
+        super.attachBaseContext(
+            LocaleHelper.setLocale(newBase, language.code)
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
