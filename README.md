@@ -8,7 +8,9 @@
 
 
 <div align="center">
-<img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=fff&style=for-the-badge" alt="Android"/>
+<a href="https://www.android.com/">
+  <img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=fff&style=for-the-badge" alt="Android"/>
+</a>
 <a href="https://kotlinlang.org/">
   <img src="https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=fff&style=for-the-badge" alt="Kotlin"/>
 </a>
