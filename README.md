@@ -107,9 +107,13 @@
     
 - **Pause Monitoring**
   - Ability to pause monitoring directly from the Quick Tile.
+
+- **Save clipboard**
+  - Quick tile "Save clipboard", to save copied text without opening the app
     
 - **Quick Tile Enhancement**
   - "Copy Last Text" option to the Quick Tile for faster access.
+    
 - **Edit items**
   - Simply long-press (long click) on any item's icon (note, code snippet, or link) to open the edit screen. 
 
