@@ -71,6 +71,14 @@
     <string name="clipboard_empty_text">Clipboard is empty</string>
     <string name="system">SYSTEM</string>
     <string name="accessibility_service">Accessibility service</string>
-    <string name="allow_saving_the_clipboard_without_opening_the_app">Allow saving the clipboard without opening the app</string>
+    <string name="allow_saving_the_clipboard_without_opening_the_app">Allow saving the clipboard without\nopening the app</string>
     <string name="accessibility_service_description">Allows Copypus to save copied text automatically.</string>
+    <string name="overlay_permission">Overlay permission</string>
+    <string name="allow_it_to_save_copied_items_without_opening_the_app">Allow it to save copied items without\nopening the app</string>
+    <string name="battery_optimization">Battery optimization</string>
+    <string name="allow_copypus_to_ignore_battery_optimization">Allow Copypus to ignore battery optimization</string>
+    <string name="fg_service_title">Copypus is working</string>
+    <string name="fg_service_text">Clipboard saving is active</string>
+    <string name="clipboard_monitoring">Clipboard monitoring</string>
+    <string name="keeps_copypus_running_to_save_your_clipboard">Keeps Copypus running to save your clipboard</string>
 </resources>

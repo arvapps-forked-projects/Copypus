@@ -1,7 +1,22 @@
 package com.emilioaugust.copypus.utils
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import android.text.TextUtils
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.emilioaugust.copypus.R
+import com.emilioaugust.copypus.service.ClipboardAccessibilityService
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -76,4 +91,76 @@ fun detectClipboardType(text: String): ClipboardType {
     }
 
     return ClipboardType.TEXT
+}
+
+// SYSTEM
+fun isPostNotificationsGranted(context: Context): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+}
+
+fun checkNotificationEnabled(activity: Activity) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                1001
+            )
+        }
+    }
+}
+
+fun isBatteryOptimizationIgnored(context: Context): Boolean {
+    val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    return pm.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+@SuppressLint("BatteryLife")
+fun requestIgnoreBatteryOptimization(context: Context) {
+    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+        data = "package:${context.packageName}".toUri()
+    }
+    try {
+        context.startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+    }
+}
+
+fun isAccessibilityServiceEnabled(context: Context): Boolean {
+    val expectedComponent = ComponentName(
+        context,
+        ClipboardAccessibilityService::class.java
+    )
+
+    val enabledServices = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    ) ?: return false
+
+    val splitter = TextUtils.SimpleStringSplitter(':')
+    splitter.setString(enabledServices)
+
+    while (splitter.hasNext()) {
+        val component = ComponentName.unflattenFromString(splitter.next())
+        if (component == expectedComponent) {
+            return true
+        }
+    }
+    return false
+}
+
+fun isOverlayPermissionGranted(context: Context): Boolean {
+    return Settings.canDrawOverlays(context)
 }

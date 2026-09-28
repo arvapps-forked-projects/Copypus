@@ -2,6 +2,8 @@ package com.emilioaugust.copypus.ui.screens
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,14 +18,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,6 +71,12 @@ import com.emilioaugust.copypus.data.viewmodel.SettingsViewModel
 import com.emilioaugust.copypus.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
 import androidx.core.net.toUri
+import com.emilioaugust.copypus.utils.checkNotificationEnabled
+import com.emilioaugust.copypus.utils.isAccessibilityServiceEnabled
+import com.emilioaugust.copypus.utils.isBatteryOptimizationIgnored
+import com.emilioaugust.copypus.utils.isOverlayPermissionGranted
+import com.emilioaugust.copypus.utils.isPostNotificationsGranted
+import com.emilioaugust.copypus.utils.requestIgnoreBatteryOptimization
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,6 +138,107 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         }
                     }
                 }
+
+                // SYSTEM
+                Spacer(modifier = Modifier.height(28.dp))
+                Text(text = stringResource(R.string.system),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray)
+                Spacer(modifier = Modifier.height(2.dp))
+
+                SettingsCard {
+                    SettingsSystemItem(
+                        stringResource(R.string.accessibility_service),
+                        stringResource(
+                            R.string.allow_saving_the_clipboard_without_opening_the_app
+                        ),
+                        icon = if(isAccessibilityServiceEnabled(context)) {
+                            Icons.Default.CheckCircle
+                        } else {
+                            Icons.Default.RemoveCircle
+                        },
+                        iconColor = if(isAccessibilityServiceEnabled(context)) {
+                            Color(0xFF16AB46)
+                        } else {
+                            Color.Red
+                        },
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            context.startActivity(intent)
+                        }
+                    )
+
+                    HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+
+                    SettingsSystemItem(
+                        stringResource(R.string.overlay_permission),
+                        stringResource(
+                            R.string.allow_it_to_save_copied_items_without_opening_the_app
+                        ),
+                        icon = if(isOverlayPermissionGranted(context)) {
+                            Icons.Default.CheckCircle
+                        } else {
+                            Icons.Default.RemoveCircle
+                        },
+                        iconColor = if(isOverlayPermissionGranted(context)) {
+                            Color(0xFF16AB46)
+                        } else {
+                            Color.Red
+                        },
+                        onClick = {
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                "package:${context.packageName}".toUri()
+                            )
+                            context.startActivity(intent)
+                        }
+                    )
+
+                    HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+
+                    SettingsSystemItem(
+                        stringResource(R.string.battery_optimization),
+                        stringResource(
+                            R.string.allow_copypus_to_ignore_battery_optimization
+                        ),
+                        icon = if(isBatteryOptimizationIgnored(context)) {
+                            Icons.Default.CheckCircle
+                        } else {
+                            Icons.Default.RemoveCircle
+                        },
+                        iconColor = if(isBatteryOptimizationIgnored(context)) {
+                            Color(0xFF16AB46)
+                        } else {
+                            Color.Red
+                        },
+                        onClick = {
+                            requestIgnoreBatteryOptimization(context)
+                        }
+                    )
+
+                    HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+
+                    SettingsSystemItem(
+                        "Notification access",
+                        "Allow Copypus to show notifications",
+                        icon = if(isPostNotificationsGranted(context)) {
+                            Icons.Default.CheckCircle
+                        } else {
+                            Icons.Default.RemoveCircle
+                        },
+                        iconColor = if(isPostNotificationsGranted(context)) {
+                            Color(0xFF16AB46)
+                        } else {
+                            Color.Red
+                        },
+                        onClick = {
+                            checkNotificationEnabled(activity)
+                        }
+                    )
+
+                }
+
                 // AUTO DELETE and PAUSE DURATION
                 Spacer(modifier = Modifier.height(28.dp))
                 Text(text = stringResource(R.string.title_preferences_settings), style = MaterialTheme.typography.labelSmall,
@@ -291,6 +403,32 @@ fun SettingsItem(title: String, description: String, control: @Composable () -> 
                     color = Color.Gray, modifier = Modifier.width(230.dp))
             }
             control()
+        }
+    }
+}
+
+@Composable
+fun SettingsSystemItem(title: String, description: String, icon: ImageVector, iconColor: Color,
+                       onClick: () -> Unit) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 16.dp, horizontal = 16.dp)) {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column() {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray)
+            }
+            Spacer(Modifier.weight(1f))
+            Icon(icon, contentDescription = null, tint = iconColor,
+                modifier = Modifier.size(18.dp))
         }
     }
 }

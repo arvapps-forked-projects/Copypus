@@ -6,7 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import com.emilioaugust.copypus.R
 
-class CopypusApp : Application() {
+class NotificationApp : Application() {
     override fun onCreate() {
         super.onCreate()
         createChannel()

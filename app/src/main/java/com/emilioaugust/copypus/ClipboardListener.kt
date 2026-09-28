@@ -45,23 +45,23 @@ class ClipboardManagerHelper(val appContext: Context) {
 
     fun startListening(onNewData: (ClipboardData) -> Unit) {
         listener = ClipboardManager.OnPrimaryClipChangedListener {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val enabled = settingsDataStore.monitoringEnabledFlow.first()
-                    if (!enabled) return@launch
+            CoroutineScope(Dispatchers.IO).launch {
+                val enabled = settingsDataStore.monitoringEnabledFlow.first()
+                if (!enabled) return@launch
 
-                    val clip = clipboardManager.primaryClip
-                    val item = clip?.getItemAt(0)
+                val clip = clipboardManager.primaryClip
+                val item = clip?.getItemAt(0)
 
-                    if (item != null) {
-                        val text = item.coerceToText(appContext)?.toString()
-                        if (!text.isNullOrBlank()) {
-                            withContext(Dispatchers.Main) {
-                                onNewData(ClipboardData.Text(text))
-                            }
+                if (item != null) {
+                    val text = item.coerceToText(appContext)?.toString()
+                    if (!text.isNullOrBlank()) {
+                        withContext(Dispatchers.Main) {
+                            onNewData(ClipboardData.Text(text))
                         }
                     }
                 }
             }
+        }
         clipboardManager.addPrimaryClipChangedListener(listener)
     }
 
