@@ -4,6 +4,10 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +33,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,7 +45,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -61,6 +71,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.emilioaugust.copypus.BuildConfig
 import com.emilioaugust.copypus.R
@@ -71,12 +83,21 @@ import com.emilioaugust.copypus.data.viewmodel.SettingsViewModel
 import com.emilioaugust.copypus.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
 import androidx.core.net.toUri
+import com.emilioaugust.copypus.data.backup.BackupException
+import com.emilioaugust.copypus.data.backup.BackupManager
+import com.emilioaugust.copypus.service.ServiceLocator
 import com.emilioaugust.copypus.utils.checkNotificationEnabled
 import com.emilioaugust.copypus.utils.isAccessibilityServiceEnabled
 import com.emilioaugust.copypus.utils.isBatteryOptimizationIgnored
 import com.emilioaugust.copypus.utils.isOverlayPermissionGranted
 import com.emilioaugust.copypus.utils.isPostNotificationsGranted
 import com.emilioaugust.copypus.utils.requestIgnoreBatteryOptimization
+import java.text.SimpleDateFormat
+import java.util.Date
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,9 +107,113 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val autoDelete by viewModel.autoDelete.collectAsState(initial = AutoDeleteOption.NEVER)
     val language by viewModel.language.collectAsState(initial = AppLanguage.ENGLISH)
     val pauseDuration by viewModel.pauseDuration.collectAsState(initial = PauseDuration.MIN_15)
+    val backupManager = remember {
+        BackupManager(
+            context.applicationContext,
+            ServiceLocator.repository
+        )
+    }
+
+    var isProcessing by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val activity = LocalContext.current as Activity
+
+    var showExportPasswordDialog by remember { mutableStateOf(false) }
+    var showImportPasswordDialog by remember { mutableStateOf(false) }
+
+    var pendingExportPassword by remember { mutableStateOf<CharArray?>(null) }
+    var pendingImportPassword by remember { mutableStateOf<CharArray?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri: Uri? ->
+        val password = pendingExportPassword
+        pendingExportPassword = null
+
+        if (uri == null || password == null) {
+            password?.fill('\u0000')
+            return@rememberLauncherForActivityResult
+        }
+
+        scope.launch {
+            isProcessing = true
+            try {
+                val output = context.contentResolver.openOutputStream(uri)
+                    ?: throw IOException("Cannot open the destination file")
+
+                output.use {
+                    withContext(Dispatchers.IO) {
+                        backupManager.exportBackup(it, password)
+                    }
+                }
+
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.backup_saved),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.export_failed, e.message ?: "Unknown error"),
+                    Toast.LENGTH_LONG
+                ).show()
+
+                Log.d("Export", e.message.toString())
+            } finally {
+                isProcessing = false
+                password.fill('\u0000')
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        val password = pendingImportPassword
+        pendingImportPassword = null
+
+        if (uri == null || password == null) {
+            password?.fill('\u0000')
+            return@rememberLauncherForActivityResult
+        }
+
+        scope.launch {
+            isProcessing = true
+            try {
+                val input = context.contentResolver.openInputStream(uri)
+                    ?: throw IOException("Cannot open the selected file")
+
+                val result = input.use {
+                    withContext(Dispatchers.IO) {
+                        backupManager.importBackup(it, password)
+                    }
+                }
+
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.restored_items, result.importedItems),
+                    Toast.LENGTH_LONG
+                ).show()
+            } catch (e: BackupException.WrongPassword) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.wrong_password_or_corrupted_file),
+                    Toast.LENGTH_LONG
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.import_failed, e.message ?: "Unknown error"),
+                    Toast.LENGTH_LONG
+                ).show()
+            } finally {
+                isProcessing = false
+                password.fill('\u0000')
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -161,7 +286,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         iconColor = if(isAccessibilityServiceEnabled(context)) {
                             Color(0xFF16AB46)
                         } else {
-                            Color.Red
+                            Color(0xFFFF2C2C)
                         },
                         onClick = {
                             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
@@ -184,7 +309,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         iconColor = if(isOverlayPermissionGranted(context)) {
                             Color(0xFF16AB46)
                         } else {
-                            Color.Red
+                            Color(0xFFFF2C2C)
                         },
                         onClick = {
                             val intent = Intent(
@@ -210,7 +335,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         iconColor = if(isBatteryOptimizationIgnored(context)) {
                             Color(0xFF16AB46)
                         } else {
-                            Color.Red
+                            Color(0xFFFF2C2C)
                         },
                         onClick = {
                             requestIgnoreBatteryOptimization(context)
@@ -220,8 +345,8 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsSystemItem(
-                        "Notification access",
-                        "Allow Copypus to show notifications",
+                        stringResource(R.string.notification_access),
+                        stringResource(R.string.allow_copypus_to_show_notifications),
                         icon = if(isPostNotificationsGranted(context)) {
                             Icons.Default.CheckCircle
                         } else {
@@ -230,7 +355,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         iconColor = if(isPostNotificationsGranted(context)) {
                             Color(0xFF16AB46)
                         } else {
-                            Color.Red
+                            Color(0xFFFF2C2C)
                         },
                         onClick = {
                             checkNotificationEnabled(activity)
@@ -301,6 +426,64 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     }
                 }
 
+                // EXPORT or IMPORT
+                Spacer(modifier = Modifier.height(28.dp))
+                Text(text = stringResource(R.string.backup),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray)
+                Spacer(modifier = Modifier.height(4.dp))
+
+                SettingsCard {
+                    Column(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp, horizontal = 16.dp)
+                        .clickable {
+                            if (!isProcessing) {
+                                showExportPasswordDialog = true
+                            }
+                        }
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                             verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = stringResource(R.string.export_your_data), style = MaterialTheme.typography.titleMedium)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(text = stringResource(R.string.save_an_encrypted_backup_file), style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray, modifier = Modifier.width(230.dp))
+                            }
+                            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
+                        }
+                    }
+
+                    HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+
+                    Column(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp, horizontal = 16.dp)
+                        .clickable {
+                            if (!isProcessing) {
+                                showImportPasswordDialog = true
+                            }
+                        }
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = stringResource(R.string.import_data), style = MaterialTheme.typography.titleMedium)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(text = stringResource(R.string.restore_from_a_backup_file), style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray, modifier = Modifier.width(230.dp))
+                            }
+                            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
+                        }
+                    }
+                }
+
 
                 // ABOUT
                 Spacer(modifier = Modifier.height(28.dp))
@@ -344,8 +527,58 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         }
                     )
                 }
+                Spacer(modifier = Modifier.height(28.dp))
             }
         }
+
+        if (showExportPasswordDialog) {
+            PasswordDialog(
+                title = stringResource(R.string.export_your_data),
+                description = stringResource(R.string.create_a_password_to_protect_your_backup) +
+                        stringResource(R.string.you_ll_need_it_to_restore_your_data_later) +
+                        stringResource(R.string.the_password_can_t_be_recovered),
+                confirmText = stringResource(R.string.export),
+                requireConfirmation = true,
+                onConfirm = { password ->
+                    showExportPasswordDialog = false
+                    pendingExportPassword = password
+
+                    val fileName = "copypus_backup_${
+                        SimpleDateFormat(
+                            "yyyy-MM-dd_HH-mm",
+                            Locale.getDefault()
+                        ).format(Date())
+                    }.copypus"
+
+                    exportLauncher.launch(fileName)
+                },
+                onDismiss = {
+                    showExportPasswordDialog = false
+                    pendingExportPassword?.fill('\u0000')
+                    pendingExportPassword = null
+                }
+            )
+        }
+
+        if (showImportPasswordDialog) {
+            PasswordDialog(
+                title = stringResource(R.string.import_data),
+                description = stringResource(R.string.enter_the_password_you_used_when_creating_this_backup),
+                confirmText = stringResource(R.string.choose_file),
+                requireConfirmation = false,
+                onConfirm = { password ->
+                    showImportPasswordDialog = false
+                    pendingImportPassword = password
+                    importLauncher.launch(arrayOf("*/*"))
+                },
+                onDismiss = {
+                    showImportPasswordDialog = false
+                    pendingImportPassword?.fill('\u0000')
+                    pendingImportPassword = null
+                }
+            )
+        }
+
     }
 }
 
@@ -473,4 +706,134 @@ fun <T> SettingsDropdown(selected: T, options: List<T>, label: @Composable (T) -
             }
         }
     }
+}
+
+@Composable
+fun PasswordDialog(
+    title: String,
+    description: String,
+    confirmText: String,
+    requireConfirmation: Boolean,
+    onConfirm: (CharArray) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+
+    val passwordsMatch = !requireConfirmation || password == confirmPassword
+    val canConfirm = password.length >= 6 && passwordsMatch
+
+    AlertDialog(
+        onDismissRequest = {
+            password = ""
+            confirmPassword = ""
+            onDismiss()
+        },
+        title = { Text(title) },
+        text = {
+            Column {
+                Text(description, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(stringResource(R.string.password)) },
+                    visualTransformation = if (showPassword)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(
+                                if (showPassword) Icons.Default.VisibilityOff
+                                else Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = Color.Gray
+                            )
+                        }
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.tertiary,
+                        unfocusedTextColor = MaterialTheme.colorScheme.tertiary,
+                        cursorColor = MaterialTheme.colorScheme.tertiary,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        unfocusedPlaceholderColor = Color.Gray,
+                        focusedPlaceholderColor = Color.Gray,
+
+                    ),
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (requireConfirmation) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text(stringResource(R.string.confirm_password)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = confirmPassword.isNotEmpty() && !passwordsMatch,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.tertiary,
+                            unfocusedTextColor = MaterialTheme.colorScheme.tertiary,
+                            cursorColor = MaterialTheme.colorScheme.tertiary,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            unfocusedPlaceholderColor = Color.Gray,
+                            focusedPlaceholderColor = Color.Gray
+
+                        ),
+                        shape = MaterialTheme.shapes.medium
+                    )
+
+                    if (confirmPassword.isNotEmpty() && !passwordsMatch) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.passwords_don_t_match),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
+                if (password.isNotEmpty() && password.length < 6) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.password_must_be_at_least_6_characters),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val passwordChars = password.toCharArray()
+                    password = ""
+                    confirmPassword = ""
+                    onConfirm(passwordChars) },
+                enabled = canConfirm
+            ) {
+                Text(confirmText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        textContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    )
 }

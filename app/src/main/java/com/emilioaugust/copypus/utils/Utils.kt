@@ -64,7 +64,8 @@ fun isYesterday(today: Calendar, itemDate: Calendar): Boolean {
 enum class ClipboardType {
     LINK,
     CODE,
-    TEXT
+    TEXT,
+    IMAGE
 }
 
 fun detectClipboardType(text: String): ClipboardType {
@@ -122,19 +123,44 @@ fun checkNotificationEnabled(activity: Activity) {
 }
 
 fun isBatteryOptimizationIgnored(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        return true
+    }
+
     val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+
     return pm.isIgnoringBatteryOptimizations(context.packageName)
 }
 
 @SuppressLint("BatteryLife")
 fun requestIgnoreBatteryOptimization(context: Context) {
-    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-        data = "package:${context.packageName}".toUri()
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        return
     }
+
+    val packageUri = "package:${context.packageName}".toUri()
+
     try {
+        val intent = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            packageUri
+        )
+
         context.startActivity(intent)
+
     } catch (e: ActivityNotFoundException) {
-        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+
+        try {
+            val intent = Intent(
+                Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+            )
+
+            context.startActivity(intent)
+
+        } catch (e: ActivityNotFoundException) {
+        }
+    } catch (e: SecurityException) {
+
     }
 }
 
