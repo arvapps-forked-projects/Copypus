@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Divider
@@ -32,7 +33,6 @@ import com.emilioaugust.copypus.data.viewmodel.SettingsViewModel
 @Composable
 fun MainScreen(viewModel: MainViewModel, settingsViewModel: SettingsViewModel) {
     val navController = rememberNavController()
-
     Scaffold(
         bottomBar = {
             Column {
@@ -60,6 +60,25 @@ fun MainScreen(viewModel: MainViewModel, settingsViewModel: SettingsViewModel) {
                             indicatorColor = Color.Transparent
                         )
                     )
+
+                    NavigationBarItem(
+                        selected = currentRoute == Screen.Images.route,
+                        onClick = {
+                            navController.navigate(Screen.Images.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = { Icon(Icons.Default.Image, contentDescription = null) },
+                        label = { Text(stringResource(R.string.images)) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onTertiary,
+                            unselectedTextColor = MaterialTheme.colorScheme.onTertiary,
+                            indicatorColor = Color.Transparent
+                        )
+                    )
+
                     NavigationBarItem(
                         selected = currentRoute == Screen.Favorites.route,
                         onClick = {
@@ -95,7 +114,6 @@ fun MainScreen(viewModel: MainViewModel, settingsViewModel: SettingsViewModel) {
                             indicatorColor = Color.Transparent
                         )
                     )
-
                 }
             }
         },
@@ -103,6 +121,7 @@ fun MainScreen(viewModel: MainViewModel, settingsViewModel: SettingsViewModel) {
         NavHost(navController = navController, startDestination = Screen.History.route,
             modifier = Modifier.padding(paddingValues)) {
             composable(Screen.History.route) { ClipboardApp(viewModel) }
+            composable(Screen.Images.route) { ImagesScreen(viewModel) }
             composable(Screen.Favorites.route) { FavoritesScreen(viewModel) }
             composable(Screen.Settings.route) { SettingsScreen(settingsViewModel) }
         }
