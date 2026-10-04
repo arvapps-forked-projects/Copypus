@@ -5,17 +5,24 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +51,7 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Search
@@ -52,8 +60,10 @@ import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,14 +72,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil3.compose.rememberAsyncImagePainter
 import com.emilioaugust.copypus.ClipboardData
 import com.emilioaugust.copypus.data.viewmodel.MainViewModel
 import com.emilioaugust.copypus.data.entity.ClipboardItem
@@ -91,8 +110,11 @@ fun ClipboardApp(viewModel: MainViewModel) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val clipboardItems by viewModel.items.collectAsState()
     val filteredItems = clipboardItems.filter { item ->
-        val textMatch = item.text.contains(searchQuery, ignoreCase = true)
-        textMatch
+        item.type == "IMAGE" ||
+                item.text?.contains(
+                    searchQuery,
+                    ignoreCase = true
+                ) == true
     }
     val clipboardHelper = remember { ClipboardManagerHelper(context.applicationContext) }
     val groupedItems = filteredItems.groupBy { formatSectionTitle(it.timestamp, context) }
@@ -103,10 +125,13 @@ fun ClipboardApp(viewModel: MainViewModel) {
 
     DisposableEffect(Unit) {
         clipboardHelper.startListening { data ->
-
             when (data) {
                 is ClipboardData.Text -> {
                     viewModel.saveText(data.text)
+                }
+
+                is ClipboardData.Image -> {
+                    // Пока изображения здесь не обрабатываем.
                 }
             }
         }
@@ -266,7 +291,9 @@ fun ClipboardApp(viewModel: MainViewModel) {
                                         }
                                     },
                                     onLongClick = {
-                                        editingItem = item
+                                        if (item.type == "TEXT") {
+                                            editingItem = item
+                                        }
                                     }
                                 )
                             }
@@ -278,23 +305,29 @@ fun ClipboardApp(viewModel: MainViewModel) {
     }
 
     editingItem?.let { item ->
-        ModalBottomSheet(
-            onDismissRequest = {
-                editingItem = null
-            },
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ) {
-            EditSheet(
-                initialText = item.text,
-                onDismiss = { editingItem = null },
-                onSave = { newText ->
-                    viewModel.updateItem(
-                        item.copy(text = newText)
-                    )
+
+        if (item.type == "TEXT" && item.text != null) {
+
+            ModalBottomSheet(
+                onDismissRequest = {
                     editingItem = null
-                }
-            )
+                },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                EditSheet(
+                    initialText = item.text,
+                    onDismiss = {
+                        editingItem = null
+                    },
+                    onSave = { newText ->
+                        viewModel.updateItem(
+                            item.copy(text = newText)
+                        )
+                        editingItem = null
+                    }
+                )
+            }
         }
     }
 
@@ -345,6 +378,7 @@ fun ClipboardApp(viewModel: MainViewModel) {
 fun ClipboardItemCard(item: ClipboardItem, onCopy: () -> Unit, onFavorite: () -> Unit, onDelete: () -> Unit,
                       onLongClick: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    var showImageViewer by remember { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when(value) {
@@ -360,7 +394,11 @@ fun ClipboardItemCard(item: ClipboardItem, onCopy: () -> Unit, onFavorite: () ->
             }
         }
     )
-    val type = detectClipboardType(item.text ?: "")
+    val type = if (item.type == "IMAGE") {
+        ClipboardType.IMAGE
+    } else {
+        detectClipboardType(item.text ?: "")
+    }
 
     SwipeToDismissBox(
         state = dismissState,
@@ -424,31 +462,49 @@ fun ClipboardItemCard(item: ClipboardItem, onCopy: () -> Unit, onFavorite: () ->
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.secondaryContainer)
-                        .combinedClickable(
-                            onClick = {},
-                            onLongClick = onLongClick
-                        )
-                ) {
-                    Icon(
-                        imageVector = when (type) {
-                            ClipboardType.LINK ->
-                                Icons.Default.Link
-
-                            ClipboardType.CODE ->
-                                Icons.Default.Code
-
-                            ClipboardType.TEXT ->
-                                Icons.Default.TextFields },
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onTertiary,
+                if (item.type == "IMAGE" && item.imagePath != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(item.imagePath),
+                        contentDescription = item.text,
                         modifier = Modifier
-                            .padding(16.dp)
-                            .size(24.dp)
+                            .size(64.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable {
+                                showImageViewer = true
+                            },
+                        contentScale = ContentScale.Crop
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .combinedClickable(
+                                onClick = {},
+                                onLongClick = onLongClick
+                            )
+                    ) {
+                        Icon(
+                            imageVector = when (type) {
+                                ClipboardType.LINK ->
+                                    Icons.Default.Link
+
+                                ClipboardType.CODE ->
+                                    Icons.Default.Code
+
+                                ClipboardType.TEXT ->
+                                    Icons.Default.TextFields
+
+                                ClipboardType.IMAGE ->
+                                    Icons.Default.Image
+                            },
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiary,
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .size(24.dp)
+                        )
+                    }
                 }
 
                 Spacer(
@@ -466,22 +522,36 @@ fun ClipboardItemCard(item: ClipboardItem, onCopy: () -> Unit, onFavorite: () ->
                     ),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    SelectionContainer() {
-                        Text(
-                            text = item.text,
-                            maxLines =
-                                if (expanded)
-                                    Int.MAX_VALUE
-                                else
-                                    2,
-
-                            overflow =
-                                if (expanded)
+                    if (item.type == "TEXT") {
+                        SelectionContainer {
+                            item.text?.let {
+                                Text(
+                                    text = it,
+                                    maxLines = if (expanded) Int.MAX_VALUE else 2,
+                                    overflow = if (expanded)
+                                        TextOverflow.Visible
+                                    else
+                                        TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                        }
+                    } else if (item.type == "IMAGE") {
+                        item.text?.let {
+                            Text(
+                                text = it,
+                                maxLines = if (expanded) Int.MAX_VALUE else 2,
+                                overflow = if (expanded)
                                     TextOverflow.Visible
                                 else
                                     TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.combinedClickable(
+                                    onClick = {},
+                                    onLongClick = onLongClick
+                                )
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -514,6 +584,187 @@ fun ClipboardItemCard(item: ClipboardItem, onCopy: () -> Unit, onFavorite: () ->
                         .clickable { expanded = !expanded }
                 )
             }
+        }
+    }
+
+    if (showImageViewer && item.imagePath != null) {
+        ImageViewerDialog(
+            imagePath = item.imagePath,
+            onDismiss = {
+                showImageViewer = false
+            }
+        )
+    }
+}
+
+@Composable
+fun ImageViewerDialog(
+    imagePath: String,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+
+    // Состояния для трансформаций
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var swipeOffsetY by remember { mutableFloatStateOf(0f) }
+
+    // Размеры контейнера и изображения (в пикселях)
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    var imageSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val minScale = 1f
+    val maxScale = 5f
+    val doubleTapScale = 2.5f
+    val panSpeedFactor = 1.8f
+
+    val animatedScale = remember { Animatable(1f) }
+    val animatedOffset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+
+    LaunchedEffect(animatedScale.value, animatedOffset.value) {
+        scale = animatedScale.value
+        offset = animatedOffset.value
+    }
+
+    /**
+     * Возвращает максимально допустимое смещение по осям X и Y.
+     * Изображение отображается с ContentScale.Fit, поэтому его реальный размер
+     * на экране — это imageSize, отмасштабированный вписать в containerSize.
+     */
+    fun getMaxOffset(currentScale: Float): Offset {
+        if (containerSize == IntSize.Zero || imageSize == IntSize.Zero) {
+            return Offset.Zero
+        }
+
+        // Коэффициент вписывания (ContentScale.Fit) для исходного изображения
+        val fitScale = minOf(
+            containerSize.width.toFloat() / imageSize.width,
+            containerSize.height.toFloat() / imageSize.height
+        )
+
+        // Размер отображаемого изображения с учётом текущего зума
+        val displayedWidth = imageSize.width * fitScale * currentScale
+        val displayedHeight = imageSize.height * fitScale * currentScale
+
+        // Насколько можно сдвинуть от центра (половина "излишка")
+        val maxX = ((displayedWidth - containerSize.width) / 2f).coerceAtLeast(0f)
+        val maxY = ((displayedHeight - containerSize.height) / 2f).coerceAtLeast(0f)
+
+        return Offset(maxX, maxY)
+    }
+
+    fun clampOffset(candidate: Offset, currentScale: Float): Offset {
+        val max = getMaxOffset(currentScale)
+        return Offset(
+            x = candidate.x.coerceIn(-max.x, max.x),
+            y = candidate.y.coerceIn(-max.y, max.y)
+        )
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .onSizeChanged { containerSize = it }
+                // ЗУМ + ПАНОРАМИРОВАНИЕ (мультитач)
+                .pointerInput(Unit) {
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        val newScale = (scale * zoom).coerceIn(minScale, maxScale)
+
+                        val speed = 1f + (scale - minScale) *
+                                (panSpeedFactor - 1f) / (maxScale - minScale)
+                        val acceleratedPan = pan * speed
+
+                        val candidate = Offset(
+                            x = offset.x + acceleratedPan.x / newScale +
+                                    (newScale - scale) *
+                                    (centroid.x - size.width / 2f - offset.x) / newScale,
+                            y = offset.y + acceleratedPan.y / newScale +
+                                    (newScale - scale) *
+                                    (centroid.y - size.height / 2f - offset.y) / newScale
+                        )
+
+                        scale = newScale
+                        offset = if (newScale <= minScale + 0.01f) {
+                            Offset.Zero
+                        } else {
+                            clampOffset(candidate, newScale)
+                        }
+                    }
+                }
+                // ДВОЙНОЙ ТАП (зум в точку тапа / сброс)
+                .pointerInput(containerSize, imageSize) {
+                    detectTapGestures(
+                        onDoubleTap = { tapOffset ->
+                            scope.launch {
+                                if (scale > minScale + 0.01f) {
+                                    launch { animatedScale.animateTo(minScale, tween(250)) }
+                                    launch { animatedOffset.animateTo(Offset.Zero, tween(250)) }
+                                } else {
+                                    val targetScale = doubleTapScale
+                                    val rawOffset = Offset(
+                                        x = (size.width / 2f - tapOffset.x) *
+                                                (targetScale / minScale - 1f),
+                                        y = (size.height / 2f - tapOffset.y) *
+                                                (targetScale / minScale - 1f)
+                                    )
+                                    // Ограничиваем и целевое смещение
+                                    val targetOffset = clampOffset(rawOffset, targetScale)
+                                    launch { animatedScale.animateTo(targetScale, tween(250)) }
+                                    launch { animatedOffset.animateTo(targetOffset, tween(250)) }
+                                }
+                            }
+                        }
+                    )
+                }
+                // СВАЙП ВНИЗ ДЛЯ ЗАКРЫТИЯ (только при 1x)
+                .pointerInput(scale) {
+                    if (scale <= minScale + 0.01f) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { _, dragAmount ->
+                                swipeOffsetY = (swipeOffsetY + dragAmount).coerceAtLeast(0f)
+                            },
+                            onDragEnd = {
+                                if (swipeOffsetY > 200f) {
+                                    onDismiss()
+                                } else {
+                                    swipeOffsetY = 0f
+                                }
+                            }
+                        )
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(
+                    model = imagePath,
+                    onSuccess = { state ->
+                        // Запоминаем реальный размер исходного изображения
+                        val size = state.result.image.width to state.result.image.height
+                        imageSize = IntSize(size.first, size.second)
+                    }
+                ),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y + swipeOffsetY
+                        alpha = (1f - (swipeOffsetY / 600f)).coerceIn(0.3f, 1f)
+                    },
+                contentScale = ContentScale.Fit
+            )
         }
     }
 }
