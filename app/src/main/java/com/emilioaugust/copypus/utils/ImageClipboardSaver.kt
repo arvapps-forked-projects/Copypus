@@ -1,7 +1,9 @@
-package com.emilioaugust.copypus.service
+package com.emilioaugust.copypus.utils
 
 import android.content.Context
 import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -14,8 +16,8 @@ data class SavedImage(
 
 object ImageClipboardSaver {
     suspend fun save(context: Context, uri: Uri): SavedImage {
-        val result = kotlinx.coroutines.withContext(
-            kotlinx.coroutines.Dispatchers.IO
+        val result = withContext(
+            Dispatchers.IO
         ) {
             val inputStream = context.contentResolver.openInputStream(uri)
                 ?: throw IOException("Cannot open image URI")
