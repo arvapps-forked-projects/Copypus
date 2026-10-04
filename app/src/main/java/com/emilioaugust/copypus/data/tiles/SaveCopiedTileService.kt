@@ -21,8 +21,7 @@ import kotlin.jvm.java
 
 class SaveCopiedTileService : TileService() {
 
-    private val serviceScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val settingsDataStore by lazy {
         SettingsDataStore(applicationContext)
@@ -50,11 +49,9 @@ class SaveCopiedTileService : TileService() {
                     label = context.getString(
                         R.string.save_clipboard_label
                     )
-
                     subtitle = context.getString(
                         R.string.save_clipboard_subtitle
                     )
-
                     state = Tile.STATE_ACTIVE
                     updateTile()
                 }

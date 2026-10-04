@@ -2,7 +2,9 @@ package com.emilioaugust.copypus
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,6 +33,7 @@ import com.emilioaugust.copypus.data.database.AppDatabase
 import com.emilioaugust.copypus.data.datastore.SettingsDataStore
 import com.emilioaugust.copypus.data.entity.ClipboardItem
 import com.emilioaugust.copypus.data.repository.ClipboardRepository
+import com.emilioaugust.copypus.utils.ImageClipboardSaver
 import com.emilioaugust.copypus.utils.LocaleHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -57,66 +60,105 @@ class ShareReceiverActivity : ComponentActivity() {
                 .getInstance(this)
                 .clipboardDao()
         )
+
+        handleShareIntent(intent)
+
         setContent {
-            ShareReceiverScreen(intent = intent, repository = repository, onFinish = { finish() })
+            ShareReceiverScreen()
         }
     }
 
     private fun handleShareIntent(intent: Intent?) {
-        if(intent?.action != Intent.ACTION_SEND) {
+        if (intent?.action != Intent.ACTION_SEND) {
             finish()
+            return
+        }
+
+        val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+
+        if (uri != null) {
+            lifecycleScope.launch {
+                try {
+                    val savedImage = ImageClipboardSaver.save(
+                        context = this@ShareReceiverActivity,
+                        uri = uri
+                    )
+
+                    val imageFile = savedImage.file
+                    val imageHash = savedImage.hash
+
+                    val existingImage = repository.getImageByHash(imageHash)
+
+                    if (existingImage == null) {
+                        repository.saveImage(
+                            imageFileName = imageFile.name,
+                            imagePath = imageFile.absolutePath,
+                            imageHash = imageHash
+                        )
+                    } else {
+                        imageFile.delete()
+                    }
+
+                    Toast.makeText(
+                        this@ShareReceiverActivity,
+                        getString(R.string.saved_to_copypus),
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                } catch (e: Exception) {
+                    Log.e(
+                        "ShareReceiverActivity",
+                        "Failed to save shared image",
+                        e
+                    )
+                }
+
+                finish()
+            }
+
             return
         }
 
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)
 
-        if(text.isNullOrBlank()) {
-            finish()
+        if (!text.isNullOrBlank()) {
+            lifecycleScope.launch {
+                repository.insertItem(
+                    ClipboardItem(
+                        text = text,
+                        type = "TEXT",
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
+
+                Toast.makeText(
+                    this@ShareReceiverActivity,
+                    getString(R.string.saved_to_copypus),
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                finish()
+            }
+
             return
         }
 
-        lifecycleScope.launch {
-            repository.insertItem(ClipboardItem(text = text, timestamp = System.currentTimeMillis()))
-            Toast.makeText(
-                this@ShareReceiverActivity,
-                getString(R.string.saved_to_copypus),
-                Toast.LENGTH_SHORT
-            ).show()
-
-            finish()
-        }
+        finish()
     }
 }
 
 @Composable
-fun ShareReceiverScreen(intent: Intent, repository: ClipboardRepository, onFinish: () -> Unit) {
-    LaunchedEffect(Unit) {
-        if (intent.action == Intent.ACTION_SEND) {
-            val text = intent.getStringExtra(Intent.EXTRA_TEXT)
-            if (!text.isNullOrBlank()) {
-                repository.insertItem(
-                    ClipboardItem(
-                        text = text,
-                        timestamp = System.currentTimeMillis()
-                    )
-                )
-                delay(1000)
-            }
-        }
-        onFinish()
-    }
-
+fun ShareReceiverScreen() {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-
         Card(
             elevation = CardDefaults.cardElevation(8.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White)
+                containerColor = Color.White
+            )
         ) {
-
             Row(
                 modifier = Modifier.padding(
                     horizontal = 24.dp,
@@ -124,7 +166,6 @@ fun ShareReceiverScreen(intent: Intent, repository: ClipboardRepository, onFinis
                 ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Icon(
                     Icons.Default.CheckCircle,
                     contentDescription = null,

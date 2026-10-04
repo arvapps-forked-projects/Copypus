@@ -2,6 +2,7 @@ package com.emilioaugust.copypus
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -11,6 +12,7 @@ import com.emilioaugust.copypus.data.database.AppDatabase
 import com.emilioaugust.copypus.data.datastore.SettingsDataStore
 import com.emilioaugust.copypus.data.entity.ClipboardItem
 import com.emilioaugust.copypus.data.repository.ClipboardRepository
+import com.emilioaugust.copypus.utils.ImageClipboardSaver
 import com.emilioaugust.copypus.utils.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -51,19 +53,11 @@ class SaveClipboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        Log.d(TAG, "========== onCreate ==========")
-        Log.d(TAG, "intent=$intent")
-
         val fromAccessibility =
             intent.getBooleanExtra(
                 EXTRA_FROM_ACCESSIBILITY,
                 false
             )
-
-        Log.d(
-            TAG,
-            "fromAccessibility=$fromAccessibility"
-        )
 
         repository = ClipboardRepository(
             AppDatabase
@@ -86,135 +80,101 @@ class SaveClipboardActivity : ComponentActivity() {
     }
 
     private suspend fun saveClipboard() {
-
-        Log.d(
-            TAG,
-            "========== SAVE CLIPBOARD =========="
-        )
-
-        val fromAccessibility =
-            intent.getBooleanExtra(
-                EXTRA_FROM_ACCESSIBILITY,
-                false
-            )
-
-        Log.d(
-            TAG,
-            "fromAccessibility=$fromAccessibility"
-        )
-
         val clipboardManager =
             getSystemService(
                 Context.CLIPBOARD_SERVICE
             ) as ClipboardManager
 
         try {
-
-            val clip =
-                clipboardManager.primaryClip
-
-            Log.d(
-                TAG,
-                "primaryClip=$clip"
-            )
-
-            if (clip == null) {
-                Log.d(
-                    TAG,
-                    "Clipboard is null"
-                )
-
-                return
-            }
-
-            Log.d(
-                TAG,
-                "clip.itemCount=${clip.itemCount}"
-            )
+            val clip = clipboardManager.primaryClip
+                ?: return
 
             if (clip.itemCount <= 0) {
-                Log.d(
-                    TAG,
-                    "Clipboard has no items"
-                )
-
                 return
             }
 
-            val item =
-                clip.getItemAt(0)
+            val item = clip.getItemAt(0)
 
-            Log.d(
-                TAG,
-                "item=$item"
-            )
+            val isImage =
+                clip.description.hasMimeType("image/*") ||
+                        item.uri?.let { uri ->
+                            contentResolver
+                                .getType(uri)
+                                ?.startsWith("image/") == true
+                        } == true
 
-            val text =
-                item
-                    .coerceToText(this@SaveClipboardActivity)
-                    ?.toString()
-                    ?.takeIf {
-                        it.isNotBlank()
-                    }
+            if (isImage && item.uri != null) {
+                saveClipboardImage(item.uri!!)
+                return
+            }
 
-            Log.d(
-                TAG,
-                "text=[${text?.take(200)}]"
-            )
+            val text = item
+                .coerceToText(this@SaveClipboardActivity)
+                ?.toString()
+                ?.takeIf { it.isNotBlank() }
 
             if (text == null) {
-                Log.d(
-                    TAG,
-                    "Clipboard text is empty"
-                )
-
                 return
             }
 
             repository.insertItem(
                 ClipboardItem(
                     text = text,
-                    timestamp =
-                        System.currentTimeMillis()
+                    type = "TEXT",
+                    timestamp = System.currentTimeMillis()
                 )
             )
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(
                     this@SaveClipboardActivity,
-                    getString(
-                        R.string.clipboard_saved_text
-                    ),
+                    getString(R.string.clipboard_saved_text),
                     Toast.LENGTH_SHORT
                 ).show()
-
-                finishAndRemoveTask()
             }
 
-            Log.d(
-                TAG,
-                "Clipboard saved successfully"
-            )
-
-
-            Log.d(
-                TAG,
-                "===================================="
-            )
-
         } catch (e: SecurityException) {
-
-            Log.e(
-                TAG,
-                "Clipboard access denied",
-                e
-            )
+            Log.e(TAG, "Clipboard access denied", e)
 
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to read clipboard", e)
+        }
+    }
 
+    private suspend fun saveClipboardImage(uri: Uri) {
+        try {
+            val savedImage = ImageClipboardSaver.save(
+                context = this@SaveClipboardActivity,
+                uri = uri
+            )
+
+            val imageFile = savedImage.file
+            val imageHash = savedImage.hash
+
+            if (repository.getImageByHash(imageHash) != null) {
+                imageFile.delete()
+
+                return
+            }
+
+            repository.saveImage(
+                imageFileName = imageFile.name,
+                imagePath = imageFile.absolutePath,
+                imageHash = imageHash
+            )
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@SaveClipboardActivity,
+                    getString(R.string.clipboard_saved_text),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+        } catch (e: Exception) {
             Log.e(
                 TAG,
-                "Failed to read clipboard",
+                "Failed to save clipboard image",
                 e
             )
         }

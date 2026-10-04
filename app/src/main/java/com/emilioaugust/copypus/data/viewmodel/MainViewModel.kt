@@ -1,21 +1,35 @@
 package com.emilioaugust.copypus.data.viewmodel
 
 import android.app.Application
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.emilioaugust.copypus.data.backup.BackupManager
+import com.emilioaugust.copypus.data.backup.ImportResult
 import com.emilioaugust.copypus.data.database.AppDatabase
 import com.emilioaugust.copypus.data.enums.AutoDeleteOption
 import com.emilioaugust.copypus.data.entity.ClipboardItem
 import com.emilioaugust.copypus.data.repository.ClipboardRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
+import java.util.UUID
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository =
         ClipboardRepository(AppDatabase.Companion.getInstance(application).clipboardDao())
+
     private var lastSavedText: String? = null
     val items = repository.getAllItems().stateIn(scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000), initialValue = emptyList())
+
+    val images = repository.getAllImages().stateIn(scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000), initialValue = emptyList())
 
     val favoriteItems = repository.getAllFavorites().stateIn(scope = viewModelScope,
@@ -27,6 +41,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         lastSavedText = text
         viewModelScope.launch {
             repository.saveItem(text)
+        }
+    }
+
+    fun saveImage(
+        text: String,
+        imagePath: String,
+        imageHash: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val existingImage = repository.getImageByHash(imageHash)
+
+            if (existingImage != null) {
+                File(imagePath).delete()
+
+                withContext(Dispatchers.Main) {
+                    onResult(false)
+                }
+
+                return@launch
+            }
+
+            repository.saveImage(
+                imageFileName = text,
+                imagePath = imagePath,
+                imageHash = imageHash
+            )
+
+            withContext(Dispatchers.Main) {
+                onResult(true)
+            }
         }
     }
 
@@ -53,6 +98,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearAll() {
         viewModelScope.launch { repository.clearAll() }
+    }
+
+    fun clearAllImages() {
+        viewModelScope.launch { repository.clearAllImages() }
     }
 
     fun toggleFavorite(item: ClipboardItem) {

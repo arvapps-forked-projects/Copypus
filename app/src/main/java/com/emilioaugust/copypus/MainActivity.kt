@@ -1,11 +1,11 @@
 package com.emilioaugust.copypus
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,8 +15,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
@@ -24,6 +22,7 @@ import com.emilioaugust.copypus.data.viewmodel.MainViewModel
 import com.emilioaugust.copypus.data.datastore.SettingsDataStore
 import com.emilioaugust.copypus.data.viewmodel.SettingsViewModel
 import com.emilioaugust.copypus.data.viewmodel.SettingsViewModelFactory
+import com.emilioaugust.copypus.utils.ImageClipboardSaver
 import com.emilioaugust.copypus.ui.screens.MainScreen
 import com.emilioaugust.copypus.ui.theme.ClipboardTheme
 import com.emilioaugust.copypus.ui.theme.ThemeMode
@@ -103,6 +102,10 @@ class MainActivity : ComponentActivity() {
                         is ClipboardData.Text -> {
                             viewModel.saveText(data.text)
                         }
+
+                        is ClipboardData.Image -> {
+                            saveClipboardImage(data.uri)
+                        }
                     }
                 }
         }
@@ -121,6 +124,41 @@ class MainActivity : ComponentActivity() {
                 )
             if (!sharedText.isNullOrBlank()) {
                 viewModel.saveText(sharedText)
+            }
+        }
+    }
+
+    private fun saveClipboardImage(uri: Uri) {
+        lifecycleScope.launch {
+            try {
+                val savedImage = ImageClipboardSaver.save(
+                    context = this@MainActivity,
+                    uri = uri
+                )
+
+                val imageFile = savedImage.file
+                val imageHash = savedImage.hash
+
+                viewModel.saveImage(
+                    text = imageFile.name,
+                    imagePath = imageFile.absolutePath,
+                    imageHash = imageHash
+                ) { saved ->
+                    if (saved) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.clipboard_saved_text),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e(
+                    "MainActivity",
+                    "Failed to save clipboard image",
+                    e
+                )
             }
         }
     }

@@ -8,7 +8,10 @@ import androidx.room.PrimaryKey
 data class ClipboardItem(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val text: String,
+    val text: String? = null,
+    val imagePath: String? = null,
+    val imageHash: String? = null,
+    val type: String = "TEXT",
     val isFavorite: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )

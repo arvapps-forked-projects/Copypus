@@ -59,23 +59,53 @@ class ClipboardAccessibilityService : AccessibilityService() {
     private var pendingSave: Runnable? = null
 
     companion object {
-        private const val TAG = "ClipA11y"
+        private const val TAG = "ClipAlly"
         private const val SAVE_DELAY_MS = 700L
 
         private val COPY_LABELS = setOf(
-            "copy", "копировать", "скопировать", "копирование"
+            "copy", "copy to clipboard", "copy link", "copy url",
+            "copy image", "copy photo", "copy picture",
+
+            "копировать", "скопировать", "копировать ссылку",
+            "копировать изображение", "копировать картинку",
+
+            "kopieren", "link kopieren", "bild kopieren",
+
+            "copiar", "copiar enlace", "copiar imagen",
+
+            "copier", "copier le lien", "copier l'image",
+
+            "copia", "copia link", "copia immagine",
+
+            "kopiuj", "kopiuj link",
+
+            "复制", "复制链接", "复制图片",
+
+            "コピー", "リンクをコピー", "画像をコピー",
+
+            "복사", "링크 복사", "이미지 복사",
+
+            "kopyala", "bağlantıyı kopyala"
         )
 
         private val COPY_VIEW_IDS = setOf(
-            "copy", "action_copy", "menu_copy", "text_copy", "copy_text"
+            "copy", "action_copy", "menu_copy",
+            "text_copy", "copy_text", "copy_link",
+            "action_copy_link", "copy_image", "action_copy_image"
         )
     }
+
+    private lateinit var copyLabel: String
+    private lateinit var cutLabel: String
+
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         Log.d(TAG, "Accessibility service connected")
 
-        // Запускаем foreground service
+        copyLabel = getString(android.R.string.copy).lowercase()
+        cutLabel = getString(android.R.string.cut).lowercase()
+
         ClipboardForegroundService.start(this)
         Log.d(TAG, "Foreground service start requested")
 
@@ -102,7 +132,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
 
     private fun handleTextSelection(event: AccessibilityEvent) {
         val pkg = event.packageName?.toString()
-        val className = event.className?.toString()
 
         val eventText = event.text
             ?.joinToString("")
@@ -111,24 +140,7 @@ class ClipboardAccessibilityService : AccessibilityService() {
         val from = event.fromIndex
         val to = event.toIndex
 
-        Log.d(TAG, "========== SELECTION EVENT ==========")
-        Log.d(TAG, "SELECTION pkg=[$pkg]")
-        Log.d(TAG, "SELECTION class=[$className]")
-        Log.d(TAG, "SELECTION from=$from to=$to")
-        Log.d(TAG, "SELECTION eventTextLength=${eventText.length}")
-        Log.d(TAG, "SELECTION eventText=[${eventText.take(200)}]")
-
         val source = event.source
-
-        if (source == null) {
-            Log.d(TAG, "SELECTION source=null")
-        } else {
-            Log.d(TAG, "SELECTION source.class=[${source.className}]")
-            Log.d(TAG, "SELECTION source.text=[${source.text?.toString()?.take(200)}]")
-            Log.d(TAG, "SELECTION source.viewId=[${source.viewIdResourceName}]")
-            Log.d(TAG, "SELECTION source.selStart=${source.textSelectionStart}")
-            Log.d(TAG, "SELECTION source.selEnd=${source.textSelectionEnd}")
-        }
 
         var selected: String? = null
 
@@ -145,10 +157,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
             ) {
                 selected = sourceText.substring(start, end)
 
-                Log.d(
-                    TAG,
-                    "SELECTION FOUND FROM SOURCE: [$selected]"
-                )
             }
         }
 
@@ -162,10 +170,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
         ) {
             selected = eventText.substring(from, to)
 
-            Log.d(
-                TAG,
-                "SELECTION FOUND FROM EVENT: [$selected]"
-            )
         }
 
         if (selected.isNullOrBlank() && source != null) {
@@ -173,30 +177,10 @@ class ClipboardAccessibilityService : AccessibilityService() {
 
             if (!fromNode.isNullOrBlank()) {
                 selected = fromNode
-
-                Log.d(
-                    TAG,
-                    "SELECTION FOUND FROM NODE SEARCH: [$selected]"
-                )
             }
         }
 
         if (selected.isNullOrBlank()) {
-            Log.d(
-                TAG,
-                "SELECTION NOT AVAILABLE"
-            )
-
-            Log.d(
-                TAG,
-                "Keeping previous selection for possible Copy event"
-            )
-
-            Log.d(
-                TAG,
-                "===================================="
-            )
-
             return
         }
 
@@ -204,14 +188,8 @@ class ClipboardAccessibilityService : AccessibilityService() {
         lastSelectedPackage = pkg
         lastSelectedAt = System.currentTimeMillis()
 
-        Log.d(TAG, "REMEMBERED SELECTION:")
-        Log.d(TAG, "  package=[$pkg]")
-        Log.d(TAG, "  length=${selected.length}")
-        Log.d(TAG, "  text=[${selected.take(200)}]")
-
         cancelPendingSave()
 
-        Log.d(TAG, "====================================")
     }
     private fun extractSelectedText(node: AccessibilityNodeInfo): String? {
         val full = node.text?.toString()
@@ -237,7 +215,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
 
     private fun handleClick(event: AccessibilityEvent) {
         val pkg = event.packageName?.toString()
-        val className = event.className?.toString()
 
         val eventText = event.text
             ?.joinToString(" ")
@@ -251,13 +228,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
 
         val source = event.source
 
-        Log.d(TAG, "========== CLICK EVENT ==========")
-        Log.d(TAG, "CLICK pkg=[$pkg]")
-        Log.d(TAG, "CLICK class=[$className]")
-        Log.d(TAG, "CLICK text=[$eventText]")
-        Log.d(TAG, "CLICK description=[$description]")
-        Log.d(TAG, "CLICK source=$source")
-
         val sourceText =
             source?.text?.toString()?.trim() ?: ""
 
@@ -269,27 +239,15 @@ class ClipboardAccessibilityService : AccessibilityService() {
                 ?.substringAfterLast('/')
                 ?.lowercase()
 
-        val isCopy =
-            COPY_LABELS.any { label ->
-                val normalized = label.lowercase()
-
-                eventText.equals(normalized, ignoreCase = true) ||
-                        description.equals(normalized, ignoreCase = true) ||
-                        sourceText.equals(normalized, ignoreCase = true) ||
-                        sourceDescription.equals(normalized, ignoreCase = true)
-            } ||
-                    (
-                            sourceId != null &&
-                                    COPY_VIEW_IDS.contains(sourceId)
-                            )
+        val isCopy = isCopyLabel(eventText) ||
+                isCopyLabel(description) ||
+                isCopyLabel(sourceText) ||
+                isCopyLabel(sourceDescription) ||
+                (sourceId != null && COPY_VIEW_IDS.contains(sourceId))
 
         if (!isCopy) {
-            Log.d(TAG, "CLICK is NOT COPY")
-            Log.d(TAG, "================================")
             return
         }
-
-        Log.d(TAG, "******** COPY DETECTED ********")
 
         val selectionText = lastSelectedText
         val selectionPackage = lastSelectedPackage
@@ -301,27 +259,14 @@ class ClipboardAccessibilityService : AccessibilityService() {
                 Long.MAX_VALUE
             }
 
-        Log.d(TAG, "COPY STATE:")
-        Log.d(TAG, "  selectionPackage=[$selectionPackage]")
-        Log.d(TAG, "  copyPackage=[$pkg]")
-        Log.d(TAG, "  selectionAge=${selectionAge}ms")
-        Log.d(TAG, "  selectionLength=${selectionText?.length ?: 0}")
-        Log.d(TAG, "  selectionText=[${selectionText?.take(200)}]")
-
         val hasValidSelection =
             !selectionText.isNullOrBlank() &&
                     selectionPackage == pkg &&
                     selectionAge <= SELECTION_TTL_MS
 
         if (hasValidSelection) {
-            Log.d(TAG, "COPY → VALID ACCESSIBILITY SELECTION")
-            Log.d(TAG, "COPY → saving through AccessibilityService")
-
             schedulePendingSave()
         } else {
-            Log.d(TAG, "COPY → NO VALID ACCESSIBILITY SELECTION")
-            Log.d(TAG, "COPY → using Activity fallback")
-
             launchClipboardFallbackActivity()
 
             lastSelectedText = null
@@ -330,8 +275,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
 
             cancelPendingSave()
         }
-
-        Log.d(TAG, "================================")
     }
 
     private fun launchClipboardFallbackActivity() {
@@ -361,10 +304,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
 
                 try {
                     startActivity(intent, options)
-                    Log.d(
-                        TAG,
-                        "FALLBACK: SaveClipboardActivity started"
-                    )
 
                 } catch (e: Exception) {
                     Log.e(
@@ -377,10 +316,8 @@ class ClipboardAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun findSelectedNode(
-        node: AccessibilityNodeInfo?,
-        depth: Int = 0
-    ): AccessibilityNodeInfo? {
+    private fun findSelectedNode(node: AccessibilityNodeInfo?,
+                                 depth: Int = 0): AccessibilityNodeInfo? {
 
         if (node == null) return null
         if (depth > 15) return null
@@ -397,15 +334,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
                 end > start &&
                 end <= text.length
             ) {
-
-                Log.d(
-                    TAG,
-                    "FOUND SELECTED NODE: " +
-                            "class=${node.className} " +
-                            "text=[${text.take(100)}] " +
-                            "start=$start " +
-                            "end=$end"
-                )
 
                 return AccessibilityNodeInfo.obtain(node)
             }
@@ -475,7 +403,6 @@ class ClipboardAccessibilityService : AccessibilityService() {
 
     private fun persistLastSelection() {
         val text = lastSelectedText ?: run {
-            Log.d(TAG, "No remembered selection")
             return
         }
 
@@ -484,14 +411,8 @@ class ClipboardAccessibilityService : AccessibilityService() {
         val age = System.currentTimeMillis() - lastSelectedAt
 
         if (age > SELECTION_TTL_MS) {
-            Log.d(TAG, "Selection too old: ${age}ms")
             return
         }
-
-        Log.d(
-            TAG,
-            "Persisting remembered selection: [$text]"
-        )
 
         scope.launch {
             try {
@@ -502,13 +423,13 @@ class ClipboardAccessibilityService : AccessibilityService() {
                     )
                 )
 
-                Toast.makeText(
-                    applicationContext,
-                    getString(
-                            R.string.clipboard_saved_text
-                        ),
-                    Toast.LENGTH_SHORT
-                ).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@ClipboardAccessibilityService,
+                        getString(R.string.clipboard_saved_text),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
 
                 Log.d(
                     TAG,
@@ -518,6 +439,17 @@ class ClipboardAccessibilityService : AccessibilityService() {
             } catch (e: Exception) {
                 Log.e(TAG, "save failed", e)
             }
+        }
+    }
+
+    private fun isCopyLabel(text: String): Boolean {
+        if (text.isBlank()) return false
+        val normalized = text.trim().lowercase()
+
+        if (normalized == copyLabel || normalized == cutLabel) return true
+
+        return COPY_LABELS.any { label ->
+            normalized == label.lowercase()
         }
     }
 
