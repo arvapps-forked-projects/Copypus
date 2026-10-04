@@ -62,8 +62,8 @@ fun FavoritesScreen(viewModel: MainViewModel) {
     val favoriteItems by viewModel.favoriteItems.collectAsState()
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val filteredItems = favoriteItems.filter { item ->
-        val textMatch = item.text.contains(searchQuery, ignoreCase = true)
-        textMatch
+        val textMatch = item.text?.contains(searchQuery, ignoreCase = true)
+        textMatch == true
     }
     val groupedItems = filteredItems.groupBy { formatSectionTitle(it.timestamp, context) }
     val clipboardHelper = remember { ClipboardManagerHelper(context.applicationContext) }
