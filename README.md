@@ -20,7 +20,7 @@
 </div>
 <br>
 <p align="center">
-<b>Copypus automatically saves everything you copy – links, text snippets, code</b>
+<b>Copypus automatically saves everything you copy – links, text snippets, code, images</b>
 </p>
 
 <hr />
