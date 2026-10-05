@@ -56,7 +56,7 @@
 - **Accessibility Service**
   - Automatically captures selected and copied text from other apps.
   - **Note:** Accessibility Service does not guarantee that every copied item will be detected. Some apps or devices may not support it fully.
-    On **Xiaomi** devices, additional permission “Open new windows while running in background” may be required for the service to work correctly.
+    On **Xiaomi** devices, additional permission “Open new windows while running in background” may be required for the service to work correctly. **(Settings → Apps → Copypus → Other permissions → Turn on "Open new windows while running in background")**
 
 - **Image Clipboard Support**
   - Save copied images from the clipboard using the Quick Settings tile.
