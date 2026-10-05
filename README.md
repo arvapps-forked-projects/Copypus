@@ -52,6 +52,14 @@
 
 - **Automatic Clipboard Saving** 
   - Anything copied in other apps is automatically detected and saved when you open the app.
+  
+- **Accessibility Service**
+  - Automatically captures selected and copied text from other apps.
+    **Note:** Accessibility Service does not guarantee that every copied item will be detected. Some apps or devices may not support it fully.
+    On **Xiaomi** devices, additional permission “Open new windows while running in background” may be required for the service to work correctly.
+
+- **Image Clipboard Support**
+  - Save copied images from the clipboard using the Quick Settings tile.
 
 - **Favorites Support**
   - Swipe right to add items to favorites and access them anytime in a dedicated Favorites tab.
@@ -100,7 +108,7 @@
   - All app info in one place
   
 - **Share from Other Apps**
-  - Long-press any text in any app, tap Share, and send it to our app to save instantly
+  - Long-press any text or image in any app, tap Share, and send it to our app to save instantly
     
 - **Copy selectively**
   - You can copy specific selections instead of the entire text.
@@ -115,8 +123,11 @@
   - "Copy Last Text" option to the Quick Tile for faster access.
     
 - **Edit items**
-  - Simply long-press (long click) on any item's icon (note, code snippet, or link) to open the edit screen. 
+  - Simply long-press (long click) on any item's icon (note, code snippet, or link) to open the edit screen.
 
+- **Export & Import**
+  - Export your clipboard history and saved images as a backup.
+  - Import previously exported data to restore your clipboard history.
 <hr />
 
 <h2 align="center">
