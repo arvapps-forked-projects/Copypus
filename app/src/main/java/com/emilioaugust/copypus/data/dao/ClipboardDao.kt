@@ -30,7 +30,7 @@ interface ClipboardDao {
     """)
     fun getAllImages(): Flow<List<ClipboardItem>>
 
-    @Query("SELECT * FROM clipboard_items WHERE isFavorite = 1")
+    @Query("SELECT * FROM clipboard_items WHERE isFavorite = 1 ORDER BY timestamp DESC")
     fun getAllFavorites(): Flow<List<ClipboardItem>>
 
     @Query("""

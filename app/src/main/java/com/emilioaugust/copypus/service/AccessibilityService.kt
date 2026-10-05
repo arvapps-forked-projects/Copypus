@@ -40,7 +40,6 @@ object ServiceLocator {
 }
 
 class ClipboardAccessibilityService : AccessibilityService() {
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val repository: ClipboardRepository
         get() {

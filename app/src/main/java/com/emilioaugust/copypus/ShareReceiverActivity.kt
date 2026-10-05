@@ -112,10 +112,8 @@ class ShareReceiverActivity : ComponentActivity() {
                         e
                     )
                 }
-
                 finish()
             }
-
             return
         }
 
@@ -136,13 +134,10 @@ class ShareReceiverActivity : ComponentActivity() {
                     getString(R.string.saved_to_copypus),
                     Toast.LENGTH_SHORT
                 ).show()
-
                 finish()
             }
-
             return
         }
-
         finish()
     }
 }

@@ -2,7 +2,7 @@
 <resources>
     <style name="Theme.Clipboard.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#000000</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/copypus_icon_fore_night</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/copypus_icon_fore</item>
         <item name="postSplashScreenTheme">@style/Theme.Clipboard</item>
     </style>
 </resources>
